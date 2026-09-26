@@ -1,0 +1,10 @@
+{
+  "name": "dream-chat-push-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Optional Web Push backend for 梦角聊天室 PWA",
+  "main": "server.js",
+  "scripts": {"start": "node server.js"},
+  "engines": {"node": ">=18"},
+  "dependencies": {"cors": "^2.8.5", "express": "^4.21.2", "web-push": "^3.6.7"}
+}

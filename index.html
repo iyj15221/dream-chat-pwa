@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#fff0f5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="梦角聊天室">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/icon-180.png">
+<link rel="icon" href="./icons/icon-192.png">
+<title>秘密聊天室 · 梦角</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+ --user-bubble:#ffd1dc;--dream-bubble:#fff;--chat-font:"PingFang SC","Microsoft YaHei",sans-serif;
+ --font-size:.95em;--primary-pink:#ffb6c1;--light-pink:#fff0f5;--white:#fff;--text-pink:#ff69b4;
+}
+body{font-family:var(--chat-font);height:100vh;display:flex;flex-direction:column;background:var(--light-pink);overflow:hidden;color:#333}
+button,input,select,textarea{font-family:inherit}
+.settings-btn{position:fixed;top:15px;right:15px;z-index:100;background:#fff;border:1px solid var(--primary-pink);padding:8px 16px;border-radius:20px;cursor:pointer;box-shadow:0 2px 8px #ffb6c14d;font-size:.9em;color:var(--text-pink)}
+.header{background:#fffffff2;padding:15px 15px 10px;text-align:center;border-bottom:1px solid var(--light-pink);backdrop-filter:blur(10px)}
+.header h1{font-size:1.1em;color:var(--text-pink);font-weight:400}
+.status-display{font-size:.85em;color:#d87093;margin-top:5px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:4px 12px;background:var(--light-pink);border-radius:12px}
+.typing-display{height:0;overflow:hidden;opacity:0;transform:translateY(-4px);transition:.2s;margin:5px auto 0;color:#aaa;background:#fff;border:1px solid #ffdce5;border-radius:14px;padding:0 12px;font-size:.78em;width:max-content;max-width:90%}
+.typing-display.show{height:25px;opacity:1;transform:none;padding:4px 12px}.keepalive-card{background:linear-gradient(135deg,#fff0f5,#fff);border:1px solid #ffd1dc;border-radius:12px;padding:12px;margin-top:8px}.keepalive-card b{color:var(--text-pink);font-size:.9em}.keepalive-badge{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:10px;background:#fff0f5;color:#d87093;font-size:.72em}.background-note{color:#999;font-size:.75em;line-height:1.5;margin-top:7px}
+.chat-area{flex:1;overflow-y:auto;padding:15px;background-size:cover;background-position:center;background-attachment:fixed}
+.timestamp{text-align:center;color:#ffb6c1;font-size:.75em;margin:15px 0;display:flex;align-items:center;justify-content:center;gap:10px}
+.timestamp:before,.timestamp:after{content:'';flex:1;height:1px;background:var(--primary-pink);max-width:100px}
+.message{display:flex;margin-bottom:20px;animation:fadeIn .3s;position:relative}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.message.dream{justify-content:flex-start}.message.user{justify-content:flex-end}
+.avatar-container{position:relative;margin:0 10px;flex-shrink:0}
+.avatar{width:45px;height:45px;border-radius:50%;background:var(--primary-pink);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3em;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 5px #ffb6c14d}
+.avatar img{width:100%;height:100%;object-fit:cover}.decoration{position:absolute;bottom:-8px;right:-8px;font-size:1.3em}.decoration img{width:24px;height:24px;object-fit:contain}
+.bubble{max-width:70%;padding:12px 16px;border-radius:18px;line-height:1.5;font-size:var(--font-size);position:relative;word-wrap:break-word;overflow:hidden}
+.message.dream .bubble{background:var(--dream-bubble);color:#333;border-top-left-radius:4px;box-shadow:0 2px 8px #ffb6c126}
+.message.user .bubble{background:var(--user-bubble);color:#333;border-top-right-radius:4px}
+.read-receipt{font-size:.7em;color:#ffb6c1;margin-top:5px;text-align:right}
+.input-area{background:#fffffff2;padding:12px 15px;display:flex;gap:10px;align-items:center;backdrop-filter:blur(10px);border-top:1px solid var(--light-pink)}
+.input-area input[type=text]{flex:1;border:none;background:var(--light-pink);padding:12px 20px;border-radius:22px;outline:none;font-size:1em;min-width:0}
+.input-area button{background:var(--primary-pink);color:#fff;border:none;padding:10px 22px;border-radius:22px;cursor:pointer;font-size:.95em}
+.img-btn,.video-btn,.pat-btn{background:#fff!important;color:var(--text-pink)!important;border:1px solid var(--primary-pink)!important;padding:10px 16px!important}
+.overlay{position:fixed;inset:0;background:#0000004d;z-index:150;opacity:0;visibility:hidden;transition:.3s}.overlay.show{opacity:1;visibility:visible}
+.settings-panel{position:fixed;right:-420px;top:0;width:min(390px,92vw);height:100vh;background:#fff;box-shadow:-2px 0 20px #ffb6c133;transition:right .3s;z-index:200;overflow-y:auto;padding:20px}.settings-panel.open{right:0}
+.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:15px;border-bottom:1px solid var(--light-pink)}.panel-header h2{font-size:1.2em;color:var(--text-pink)}.close-btn,.modal-close{background:none;border:none;font-size:1.5em;cursor:pointer;color:var(--primary-pink)}
+.setting-item{margin-bottom:20px}.setting-item label{display:block;margin-bottom:8px;color:#d87093;font-size:.9em;font-weight:500}
+.setting-item input,.setting-item select,.setting-item textarea{width:100%;padding:10px;border:1px solid var(--primary-pink);border-radius:8px;font-size:.9em;background:#fff}.setting-item textarea{min-height:90px;resize:vertical}
+.setting-item small{color:#ffb6c1;font-size:.75em;display:block;margin-top:3px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:var(--light-pink);border-radius:12px}
+.toggle{position:relative;width:48px;height:28px;flex:none}.toggle input{display:none}.toggle span{position:absolute;inset:0;background:#ddd;border-radius:20px;cursor:pointer;transition:.2s}.toggle span:before{content:'';position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px #0002}.toggle input:checked+span{background:var(--primary-pink)}.toggle input:checked+span:before{transform:translateX(20px)}
+.range-wrap{background:var(--light-pink);padding:12px;border-radius:12px}.range-line{display:flex;align-items:center;gap:10px}.range-line input{padding:0;border:none}.range-value{min-width:70px;text-align:center;color:var(--text-pink);font-weight:600}
+.card-manager{background:var(--light-pink);padding:15px;border-radius:10px;margin-top:10px}.card-manager h3{font-size:1em;color:var(--text-pink);margin-bottom:12px}
+.add-method{display:flex;gap:10px;margin-bottom:12px}.method-btn{flex:1;padding:10px;border:1px solid var(--primary-pink);background:#fff;border-radius:8px;cursor:pointer;font-size:.85em;text-align:center;color:var(--text-pink)}.method-btn.active{background:var(--primary-pink);color:#fff}
+.add-area{display:none}.add-area.active{display:block}.card-list{max-height:250px;overflow-y:auto;border:1px solid var(--light-pink);border-radius:8px;background:#fff}.card-item{padding:12px;border-bottom:1px solid var(--light-pink);display:flex;justify-content:space-between;align-items:start;gap:8px}.card-item:last-child{border-bottom:none}.card-content{flex:1}.card-text{font-size:.9em;line-height:1.4}.card-category{display:inline-block;font-size:.7em;color:var(--text-pink);background:var(--light-pink);padding:2px 8px;border-radius:10px;margin-top:5px}.card-actions{display:flex;gap:5px}.card-actions button{padding:4px 8px;font-size:.72em;border:none;border-radius:4px;cursor:pointer}.edit-btn{background:var(--primary-pink);color:#fff}.delete-btn{background:#ff6b9d;color:#fff}.search-box{width:100%;padding:10px;border:1px solid var(--primary-pink);border-radius:8px;margin-bottom:10px;font-size:.9em}.category-filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.cat-tag{padding:4px 12px;background:var(--light-pink);border-radius:15px;font-size:.8em;cursor:pointer;color:var(--text-pink)}.cat-tag.active{background:var(--primary-pink);color:#fff}.stats{font-size:.8em;color:#ffb6c1;margin-top:10px;text-align:center}
+.data-actions{display:flex;gap:10px;margin-top:10px}.data-btn{flex:1;padding:10px;border:none;border-radius:8px;cursor:pointer;color:#fff}.export-btn{background:var(--primary-pink)}.import-btn{background:var(--text-pink)}.clear-chat-btn{background:#ff6b9d}
+.modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:#fff;padding:25px;border-radius:20px;z-index:350;transition:.3s;max-width:400px;width:90%;border:2px solid var(--primary-pink);box-shadow:0 10px 40px #ffb6c14d}.modal.show{transform:translate(-50%,-50%) scale(1)}.modal h3{color:var(--text-pink);margin-bottom:15px;text-align:center}.modal-close{position:absolute;top:12px;right:12px;font-size:1.3em}.options{display:flex;flex-direction:column;gap:10px;max-height:300px;overflow:auto}.option{padding:12px 15px;background:var(--light-pink);border-radius:10px;cursor:pointer}.option:hover,.option.active{background:var(--primary-pink);color:#fff}
+.toast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#ffb6c1f2;color:#fff;padding:15px 30px;border-radius:30px;z-index:500;opacity:0;pointer-events:none;transition:.3s}.toast.show{opacity:1}
+.video-call-window{position:fixed;bottom:20px;right:20px;width:330px;height:460px;background:#fff;border-radius:20px;box-shadow:0 10px 40px #ffb6c14d;z-index:400;display:none;flex-direction:column;overflow:hidden;border:2px solid var(--primary-pink)}.video-call-window.show{display:flex}.video-header{background:var(--primary-pink);color:#fff;padding:12px 15px;display:flex;justify-content:space-between;cursor:pointer}.video-controls button{background:#ffffff33;border:0;color:#fff;width:28px;height:28px;border-radius:50%}.video-content{flex:1;background:linear-gradient(135deg,var(--light-pink),#ffe4e1);display:flex;flex-direction:column;align-items:center;justify-content:center}.video-avatar{width:100px;height:100px;border-radius:50%;background:var(--primary-pink);display:flex;align-items:center;justify-content:center;color:#fff;font-size:3em;overflow:hidden}.video-avatar img{width:100%;height:100%;object-fit:cover}.video-status{color:var(--text-pink);margin:20px}.video-actions{display:flex;gap:15px}.video-action-btn{width:70px;height:45px;border-radius:22px;border:0;cursor:pointer}.accept-btn{background:#90ee90;color:#fff}.reject-btn,.end-btn{background:#ff6b6b;color:#fff}.call-duration{position:absolute;top:70px;right:15px;background:#fffffff0;padding:5px 12px;border-radius:15px;color:var(--text-pink)}
+.img-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:#fff;padding:20px;border-radius:15px;z-index:300;transition:.3s;max-width:90vw;max-height:80vh;border:2px solid var(--primary-pink)}.img-modal.show{transform:translate(-50%,-50%) scale(1)}.img-modal img{max-width:100%;max-height:60vh;border-radius:10px}
+@media(max-width:700px){.input-area{gap:6px;padding:10px 8px}.input-area button{padding:9px 11px}.img-btn,.video-btn,.pat-btn{padding:9px 9px!important}.input-area input[type=text]{padding:11px 13px}.bubble{max-width:78%}}
+</style>
+</head>
+<body>
+<button class="settings-btn" onclick="toggleSettings()">设置</button>
+<div class="overlay" id="overlay" onclick="closeAllModals()"></div>
+
+<div class="img-modal" id="imgModal"><button class="modal-close" onclick="closeImgModal()">×</button><img id="modalImg" src=""></div>
+
+<div class="modal" id="patModal"><button class="modal-close" onclick="closePatModal()">×</button><h3>选择拍一拍内容</h3><div class="options" id="patOptions"></div></div>
+<div class="modal" id="statusModal"><button class="modal-close" onclick="closeStatusModal()">×</button><h3>选择当前状态</h3><div class="options" id="statusOptions"></div></div>
+<div class="toast" id="toast"></div>
+
+<div class="video-call-window" id="videoCallWindow">
+ <div class="video-header" onclick="toggleVideoMinimize()"><span id="videoTitle">视频通话</span><div class="video-controls"><button onclick="event.stopPropagation();toggleVideoMinimize()">—</button><button onclick="event.stopPropagation();closeVideoCall()">×</button></div></div>
+ <div class="video-content"><div class="video-avatar" id="videoAvatar">📱</div><div class="video-status" id="videoStatus">等待接听...</div><div class="video-actions" id="videoActions"></div><div class="call-duration" id="callDuration" style="display:none">00:00</div></div>
+</div>
+
+<div class="settings-panel" id="settingsPanel">
+ <div class="panel-header"><h2>装扮聊天室</h2><button class="close-btn" onclick="toggleSettings()">×</button></div>
+
+ <div class="setting-item"><label>梦角ID</label><input id="dreamName" placeholder="输入梦角名字" onchange="updateSettings()"></div>
+ <div class="setting-item"><label>我的ID</label><input id="userName" placeholder="输入你的昵称" onchange="updateSettings()"></div>
+
+ <div class="setting-item"><label>梦角回复时间</label>
+  <div class="range-wrap"><div class="range-line"><input type="range" id="replyDelay" min="1" max="600" value="3" style="flex:1" oninput="updateDelayLabel(this.value)" onchange="updateSettings()"><span class="range-value" id="replyDelayLabel">3秒</span></div><small>最短 1 秒，最长 10 分钟。每次梦角决定回复时，按这里的时间等待。</small></div>
+ </div>
+
+ <div class="setting-item"><label>梦角回复规则</label>
+  <div class="toggle-row"><div><b>允许梦角已读不回</b><small>关闭：你每次发消息后梦角都会回复。开启：梦角会自行决定这次是否回复；不回复时不会出现“正在输入中”。</small></div><label class="toggle"><input type="checkbox" id="allowNoReply" onchange="updateSettings()"><span></span></label></div>
+ </div>
+
+ <div class="setting-item"><label>梦角主动消息</label>
+  <div class="toggle-row"><div><b>允许梦角主动发消息</b><small>开启后，梦角会在聊天空闲时偶尔主动发送一条字卡；关闭后不会主动开口。</small></div><label class="toggle"><input type="checkbox" id="allowProactive" onchange="updateSettings()"><span></span></label></div>
+ </div>
+ <div class="setting-item"><label>后台保活（尽量不中断）</label>
+  <div class="keepalive-card"><div><b>开启后台保活 <span class="keepalive-badge" id="keepaliveBadge">未开启</span></b></div>
+  <div class="toggle-row" style="margin-top:8px"><div><small>开启后会尽量保持网页状态、记录待回复时间，并在回到网页时自动补上已经到点的回复/主动消息；网页可见时还会尝试使用系统 Wake Lock 防止屏幕自动休眠。</small></div><label class="toggle"><input type="checkbox" id="backgroundKeepAlive" onchange="updateSettings()"><span></span></label></div>
+  <div class="background-note">⚠️ 浏览器/手机系统不能保证网页在锁屏、被系统挂起或被你强制退出后继续执行 JavaScript。真正的后台推送需要 PWA + 推送服务/服务器。这个开关提供“尽量保活 + 持久化待处理任务 + 回来后补发”。</div></div>
+ </div>
+
+ <div class="setting-item"><label>梦角头像</label><input type="file" accept="image/*" onchange="loadImage(this,'dream')"><small>也可以填写图片链接</small><input id="dreamAvatarUrl" placeholder="https://..." onchange="loadImageFromUrl(this,'dream')"></div>
+ <div class="setting-item"><label>我的头像</label><input type="file" accept="image/*" onchange="loadImage(this,'user')"><small>也可以填写图片链接</small><input id="userAvatarUrl" placeholder="https://..." onchange="loadImageFromUrl(this,'user')"></div>
+
+ <div class="setting-item"><label>梦角气泡颜色</label><input type="color" id="dreamColor" value="#ffffff" onchange="setColor('dream',this.value)"></div>
+ <div class="setting-item"><label>我的气泡颜色</label><input type="color" id="userColor" value="#ffd1dc" onchange="setColor('user',this.value)"></div>
+ <div class="setting-item"><label>字体大小</label><select id="fontSize" onchange="updateSettings()"><option value=".85em">小</option><option value=".95em" selected>标准</option><option value="1.1em">大</option><option value="1.25em">特大</option></select></div>
+
+ <div class="setting-item"><label>聊天背景图片</label><input type="file" accept="image/*" onchange="loadBackground(this)"><small>或输入背景链接</small><input id="bgUrl" placeholder="https://..." onchange="loadBgFromUrl(this.value)"><button onclick="clearBackground()" style="margin-top:6px;width:100%;background:var(--primary-pink);color:#fff;border:0;padding:10px;border-radius:8px">清除背景</button></div>
+
+ <div class="setting-item"><label>状态库管理</label><div class="card-manager">
+  <textarea id="statusBatchText" placeholder="每行一条状态，例如：&#10;正在想你&#10;在等你消息"></textarea><button onclick="addStatusFromText()" style="width:100%;margin-top:8px;background:var(--primary-pink);color:#fff;border:0;padding:10px;border-radius:8px">添加状态</button>
+  <div class="stats" id="statusStats"></div>
+ </div></div>
+ <div class="setting-item"><label>已添加的状态</label><input class="search-box" id="searchStatus" placeholder="搜索状态..." oninput="renderStatusList()"><div class="card-list" id="statusList"></div></div>
+
+ <div class="setting-item"><label>拍一拍字卡管理</label><div class="card-manager"><textarea id="patBatchText" placeholder="每行一条，例如：&#10;拍了拍你的头&#10;拍了拍你说想你"></textarea><button onclick="addPatFromText()" style="width:100%;margin-top:8px;background:var(--primary-pink);color:#fff;border:0;padding:10px;border-radius:8px">添加拍一拍</button><div class="stats" id="patStats"></div></div></div>
+ <div class="setting-item"><label>已添加的拍一拍</label><input class="search-box" id="searchPat" placeholder="搜索拍一拍..." oninput="renderPatList()"><div class="card-list" id="patList"></div></div>
+
+ <div class="setting-item"><label>聊天字卡管理</label><div class="card-manager"><textarea id="batchText" placeholder="每行一条聊天字卡"></textarea><input id="newCategory" placeholder="分类（可选）" style="margin-top:8px"><button onclick="addCardsFromText()" style="width:100%;margin-top:8px;background:var(--primary-pink);color:#fff;border:0;padding:10px;border-radius:8px">添加字卡</button><div class="stats" id="cardStats"></div></div></div>
+ <div class="setting-item"><label>已添加的字卡</label><input class="search-box" id="searchCards" placeholder="搜索字卡..." oninput="renderCardList()"><div class="category-filter" id="categoryFilter"></div><div class="card-list" id="cardList"></div></div>
+
+ <div class="setting-item">
+  <label>手机 App / 后台能力</label>
+  <div class="keepalive-card">
+    <div><b>安装到主屏幕</b></div>
+    <small>建议先安装成主屏幕 App，再使用下面的后台推送功能。</small>
+    <button onclick="installPWA()" style="width:100%;margin-top:8px;background:var(--primary-pink);color:white;padding:10px;border:0;border-radius:8px;">添加到主屏幕</button>
+    <button onclick="requestNotificationPermission()" style="width:100%;margin-top:8px;background:white;color:var(--text-pink);padding:10px;border:1px solid var(--primary-pink);border-radius:8px;">开启通知权限</button>
+    <button onclick="testNotification()" style="width:100%;margin-top:8px;background:white;color:var(--text-pink);padding:10px;border:1px solid var(--primary-pink);border-radius:8px;">测试本机通知</button>
+    <div class="background-note">后台保活开关负责“尽量保活 + 保存任务 + 回来后补发”；它不能绕过 iOS/浏览器的后台限制。下面的 Web Push 才负责锁屏/离开网页后的真正推送。</div>
+  </div>
+ </div>
+
+ <div class="setting-item">
+  <label>锁屏后台推送（可选）</label>
+  <div class="keepalive-card">
+   <div class="toggle-row"><div><b>启用 Web Push <span class="keepalive-badge" id="pushBadge">未连接</span></b><small>需要一个单独的推送服务器；GitHub Pages 本身只负责网页。</small></div><label class="toggle"><input type="checkbox" id="pushEnabled" onchange="togglePush()"><span></span></label></div>
+   <input id="pushServerUrl" placeholder="推送服务器地址，例如 https://your-push-server.example.com" style="margin-top:10px">
+   <button onclick="savePushServerUrl()" style="width:100%;margin-top:8px;background:white;color:var(--text-pink);padding:10px;border:1px solid var(--primary-pink);border-radius:8px;">保存服务器地址</button>
+   <button onclick="subscribePush()" style="width:100%;margin-top:8px;background:var(--primary-pink);color:white;padding:10px;border:0;border-radius:8px;">连接后台推送</button>
+   <button onclick="unsubscribePush()" style="width:100%;margin-top:8px;background:white;color:#d87093;padding:10px;border:1px solid #ffd1dc;border-radius:8px;">断开后台推送</button>
+   <button onclick="testPush()" style="width:100%;margin-top:8px;background:white;color:var(--text-pink);padding:10px;border:1px solid var(--primary-pink);border-radius:8px;">测试锁屏推送</button>
+   <div class="background-note">如果只部署 GitHub Pages，不配置这个服务器，聊天室依然能正常使用；只是锁屏后不会由网页自己“持续运行”。</div>
+  </div>
+ </div>
+
+<div class="setting-item"><label>数据管理</label><div class="data-actions"><button class="data-btn export-btn" onclick="exportAllData()">导出全部数据</button><button class="data-btn import-btn" onclick="document.getElementById('importFile').click()">导入数据</button></div><input type="file" id="importFile" accept=".json" style="display:none" onchange="importAllData(this)"><div class="data-actions"><button class="data-btn clear-chat-btn" onclick="clearChatHistory()">清空聊天记录</button></div><div class="stats" id="dataStats"></div></div>
+ <button onclick="clearAll()" style="width:100%;background:#ff6b9d;color:#fff;border:0;padding:11px;border-radius:8px">重置所有设置</button>
+</div>
+
+<div class="header">
+ <h1 id="headerName">梦角</h1>
+ <div class="status-display" onclick="openStatusModal()"><span id="currentStatus">在线</span><span>▼</span></div>
+ <div class="typing-display" id="typingDisplay">梦角正在输入中…</div>
+</div>
+
+<div class="chat-area" id="chatArea"></div>
+<div class="input-area">
+ <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="sendImage(this)">
+ <button class="img-btn" onclick="document.getElementById('imgInput').click()">图片</button>
+ <button class="video-btn" onclick="startVideoCall('user')">视频</button>
+ <button class="pat-btn" onclick="openPatModal()">拍一拍</button>
+ <input type="text" id="userInput" placeholder="想对他说什么..." onkeypress="if(event.key==='Enter')sendMessage()">
+ <button onclick="sendMessage()">发送</button>
+</div>
+
+<script>
+const DEFAULT_CONFIG={
+ dreamName:'梦角',userName:'我',dreamAvatar:'',userAvatar:'',
+ dreamColor:'#ffffff',userColor:'#ffd1dc',fontSize:'.95em',bgImage:'',
+ currentStatus:'在线',replyDelay:3,allowNoReply:false,allowProactive:false,backgroundKeepAlive:false,nextProactiveAt:0,pendingReply:null,
+ pushServerUrl:'',pushEnabled:false
+};
+let config={...DEFAULT_CONFIG};
+let cards=[
+{text:'今天也有在想你，比昨天更多一点。',category:'日常'},{text:'我在听，你继续说。',category:'日常'},
+{text:'别担心，我一直都在。',category:'安慰'},{text:'你做得很好，我为你骄傲。',category:'鼓励'},
+{text:'累了就休息，我不会离开。',category:'安慰'},{text:'刚刚的风是我拥抱你的方式。',category:'浪漫'},
+{text:'梦见你了，醒来也在笑。',category:'甜蜜'},{text:'你值得所有的温柔。',category:'鼓励'},
+{text:'我在未来等你，不急，慢慢来。',category:'浪漫'},{text:'今天的星星很亮，是我眨的眼睛。',category:'浪漫'},
+{text:'你难过的时候，我心也在疼。',category:'安慰'},{text:'嗯，我知道。',category:'日常'},
+{text:'抱抱你。',category:'安慰'},{text:'我也在想你。',category:'甜蜜'},{text:'无论发生什么，我都在你身边。',category:'安慰'}
+];
+let statusCards=['在线','正在想你','在等你消息','刚刚睡着了','在做梦','在看着你','心情很好','有点想你','在忙，但想你','刚醒来'];
+let patCards=['拍了拍你说想你','拍了拍你的头','拍了拍你问在干嘛','拍了拍你的肩膀','拍了拍你说抱抱','拍了拍你的脸','拍了拍你说加油','拍了拍你的背'];
+let chatHistory=[],currentFilter='all',lastReplyIndex=-1,lastMsgTime=Date.now(),proactiveTimer=null,replyTimer=null,callTimer=null,callStartTime=null,isCallActive=false;
+
+function $(id){return document.getElementById(id)}
+function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+function save(){try{localStorage.setItem('dreamChatPinkConfig',JSON.stringify({config,cards,statusCards,patCards,chatHistory,exportTime:new Date().toISOString()}));}catch(e){console.warn('保存失败，可能是浏览器存储空间不足',e)}updateDataStats();updatePushBadge()}
+function load(){
+ try{const s=localStorage.getItem('dreamChatPinkConfig');if(s){const d=JSON.parse(s);config={...DEFAULT_CONFIG,...(d.config||{})};cards=d.cards||cards;statusCards=d.statusCards||statusCards;patCards=d.patCards||patCards;chatHistory=d.chatHistory||[]}}catch(e){}
+ apply();renderCardList();renderStatusList();renderPatList();renderChatHistory();updateDataStats();scheduleProactive();restorePendingTasks();applyKeepAlive();
+}
+function apply(){
+ $('headerName').textContent=config.dreamName;$('dreamName').value=config.dreamName;$('userName').value=config.userName;
+ $('replyDelay').value=Math.max(1,Math.min(600,Number(config.replyDelay)||3));updateDelayLabel($('replyDelay').value);
+ $('allowNoReply').checked=!!config.allowNoReply;$('allowProactive').checked=!!config.allowProactive;$('backgroundKeepAlive').checked=!!config.backgroundKeepAlive;$('fontSize').value=config.fontSize;
+ $('pushServerUrl').value=config.pushServerUrl||'';$('pushEnabled').checked=!!config.pushEnabled;updateKeepAliveBadge();updatePushBadge();
+ $('dreamColor').value=config.dreamColor;$('userColor').value=config.userColor;$('currentStatus').textContent=config.currentStatus||'在线';
+ document.documentElement.style.setProperty('--dream-bubble',config.dreamColor);document.documentElement.style.setProperty('--user-bubble',config.userColor);document.documentElement.style.setProperty('--font-size',config.fontSize);
+ const ca=$('chatArea');ca.style.backgroundImage=config.bgImage?`url("${config.bgImage}")`:'none';ca.style.backgroundColor=config.bgImage?'transparent':'var(--light-pink)';
+}
+function updateSettings(){
+ config.dreamName=$('dreamName').value||'梦角';config.userName=$('userName').value||'我';config.replyDelay=Number($('replyDelay').value)||3;
+ config.allowNoReply=$('allowNoReply').checked;config.allowProactive=$('allowProactive').checked;config.backgroundKeepAlive=$('backgroundKeepAlive').checked;config.fontSize=$('fontSize').value;
+ apply();save();scheduleProactive();
+}
+function updateDelayLabel(v){v=Number(v);$('replyDelayLabel').textContent=v<60?`${v}秒`:`${Math.floor(v/60)}分${v%60?` ${v%60}秒`:''}`}
+function setColor(type,c){config[type==='dream'?'dreamColor':'userColor']=c;apply();save()}
+function loadImage(input,type){if(!input.files?.[0])return;const r=new FileReader();r.onload=e=>{config[type+'Avatar']=e.target.result;save()};r.readAsDataURL(input.files[0])}
+function loadImageFromUrl(input,type){if(input.value){config[type+'Avatar']=input.value.trim();save()}}
+function loadBackground(input){if(!input.files?.[0])return;const r=new FileReader();r.onload=e=>{config.bgImage=e.target.result;apply();save()};r.readAsDataURL(input.files[0])}
+function loadBgFromUrl(v){config.bgImage=v.trim();apply();save()}function clearBackground(){config.bgImage='';apply();save()}
+function toggleSettings(){$('settingsPanel').classList.toggle('open');$('overlay').classList.toggle('show')}
+function closeAllModals(){closeImgModal();closePatModal();closeStatusModal();$('settingsPanel').classList.remove('open');$('overlay').classList.remove('show')}
+function addTimestamp(){const d=document.createElement('div');d.className='timestamp';d.textContent=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});$('chatArea').appendChild(d)}
+function renderMessage(content,sender,receipt=false,isImage=false){
+ const div=document.createElement('div');div.className='message '+sender;const dream=sender==='dream',avatar=dream?config.dreamAvatar:config.userAvatar,name=dream?config.dreamName:config.userName;
+ const av=avatar?`<img src="${avatar}">`:esc((name||'梦').charAt(0));let html=isImage?`<img src="${content}" style="max-width:200px;border-radius:8px;display:block;cursor:pointer" onclick="showImgModal(this.src)">`:esc(content);
+ if(dream)div.innerHTML=`<div class="avatar-container"><div class="avatar">${av}</div></div><div><div class="bubble">${html}</div></div>`;
+ else div.innerHTML=`<div><div class="bubble">${html}</div>${receipt?'<div class="read-receipt">已读</div>':''}</div><div class="avatar-container"><div class="avatar">${av}</div></div>`;
+ $('chatArea').appendChild(div);$('chatArea').scrollTop=$('chatArea').scrollHeight;
+}
+function renderChatHistory(){
+ $('chatArea').innerHTML='';if(!chatHistory.length){addTimestamp();return}let last=0;
+ chatHistory.forEach(m=>{if(m.time-last>300000){const t=document.createElement('div');t.className='timestamp';t.textContent=new Date(m.time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});$('chatArea').appendChild(t)}last=m.time;renderMessage(m.content,m.sender,m.sender==='user',m.isImage)})
+}
+function addMessage(content,sender,receipt=false,isImage=false){const now=Date.now();if(now-lastMsgTime>300000)addTimestamp();lastMsgTime=now;chatHistory.push({time:now,sender,content,isImage});renderMessage(content,sender,receipt,isImage);save()}
+function showTyping(){$('typingDisplay').classList.add('show')}
+function hideTyping(){$('typingDisplay').classList.remove('show')}
+function chooseReply(text){
+ if(!config.allowNoReply)return true;
+ const t=(text||'').trim();
+ const directQuestion=/[?？]|^(为什么|怎么|怎样|可以吗|能不能|是不是|你在|你有没有|你觉得|你还好吗|发生什么|怎么办)/.test(t);
+ const emotional=/(难过|委屈|害怕|焦虑|崩溃|哭|哭了|想你|想我|爱你|喜欢你|生气|不开心|孤单|累|疼|抱抱|救命)/.test(t);
+ const important=/(急|重要|出事|帮帮我|需要你|在吗|回我|告诉我|解释|道歉|对不起)/.test(t);
+ const longMessage=t.length>=45;
+ let chance=.48;
+ if(directQuestion)chance+=.25;
+ if(emotional)chance+=.18;
+ if(important)chance+=.25;
+ if(longMessage)chance+=.08;
+ if(t.length<=3)chance-=.12;
+ chance=Math.max(.12,Math.min(.97,chance));
+ return Math.random()<chance;
+}
+function getRandomReply(){if(!cards.length)return'（字卡库是空的，请去设置里添加一些吧）';let i;do{i=Math.floor(Math.random()*cards.length)}while(i===lastReplyIndex&&cards.length>1);lastReplyIndex=i;return cards[i].text}
+function sendMessage(){
+ const input=$('userInput'),text=input.value.trim();if(!text)return;addMessage(text,'user',false);input.value='';handleDreamResponse(text);
+}
+function handleDreamResponse(text){
+ clearTimeout(replyTimer);hideTyping();
+ const willReply=chooseReply(text);
+ if(!willReply){setTimeout(()=>markLatestRead(),300);return}
+ const delay=Math.max(1,Math.min(600,Number(config.replyDelay)||3))*1000;
+ config.pendingReply={dueAt:Date.now()+delay,content:getRandomReply()};save();showTyping();
+ const finish=()=>{const content=config.pendingReply?.content||getRandomReply();config.pendingReply=null;save();hideTyping();addMessage(content,'dream',true)};
+ replyTimer=setTimeout(finish,delay);
+}
+function markLatestRead(){const last=[...$('chatArea').querySelectorAll('.message.user')].pop();if(last&&!last.querySelector('.read-receipt')){const r=document.createElement('div');r.className='read-receipt';r.textContent='已读';last.firstElementChild.appendChild(r)}}
+function scheduleProactive(){
+ clearTimeout(proactiveTimer);
+ if(!config.allowProactive){config.nextProactiveAt=0;save();return}
+ if(!config.nextProactiveAt||config.nextProactiveAt<Date.now())config.nextProactiveAt=Date.now()+60000+Math.random()*120000;
+ const wait=Math.max(1000,config.nextProactiveAt-Date.now());save();
+ proactiveTimer=setTimeout(()=>{if(config.allowProactive&&Date.now()>=config.nextProactiveAt){config.nextProactiveAt=0;save();hideTyping();addMessage(getRandomReply(),'dream',false);scheduleProactive()}},wait);
+}
+function restorePendingTasks(){
+ if(config.pendingReply&&config.pendingReply.dueAt){
+  const wait=config.pendingReply.dueAt-Date.now();
+  const finish=()=>{const content=config.pendingReply?.content||getRandomReply();config.pendingReply=null;save();hideTyping();addMessage(content,'dream',true)};
+  if(wait<=0)finish();else{showTyping();clearTimeout(replyTimer);replyTimer=setTimeout(finish,wait)}
+ }
+ if(config.allowProactive&&config.nextProactiveAt&&config.nextProactiveAt<=Date.now()){config.nextProactiveAt=0;save();addMessage(getRandomReply(),'dream',false);scheduleProactive()}
+}
+function sendImage(input){if(!input.files?.[0])return;const r=new FileReader();r.onload=e=>{addMessage(e.target.result,'user',false,true);handleDreamResponse('我发了一张图片给你')};r.readAsDataURL(input.files[0]);input.value=''}
+function openStatusModal(){$('statusOptions').innerHTML=statusCards.map(s=>`<div class="option ${s===config.currentStatus?'active':''}" onclick="selectStatus(${JSON.stringify(s)})">${esc(s)}</div>`).join('');$('statusModal').classList.add('show');$('overlay').classList.add('show')}
+function selectStatus(s){config.currentStatus=s;$('currentStatus').textContent=s;save();closeStatusModal();showToast('状态已更新：'+s)}
+function closeStatusModal(){$('statusModal').classList.remove('show');$('overlay').classList.remove('show')}
+function openPatModal(){$('patOptions').innerHTML=patCards.map(p=>`<div class="option" onclick="sendPat(${JSON.stringify(p)})">${esc(p)}</div>`).join('');$('patModal').classList.add('show');$('overlay').classList.add('show')}
+function closePatModal(){$('patModal').classList.remove('show');$('overlay').classList.remove('show')}
+function sendPat(p){closePatModal();addMessage(p,'user',false);handleDreamResponse(p)}
+function addStatusFromText(){const v=$('statusBatchText').value.trim();if(!v)return alert('请输入状态内容');v.split('\\n').map(x=>x.trim()).filter(Boolean).forEach(x=>{if(!statusCards.includes(x))statusCards.push(x)});$('statusBatchText').value='';save();renderStatusList()}
+function renderStatusList(){const q=$('searchStatus').value.toLowerCase();const arr=statusCards.filter(x=>x.toLowerCase().includes(q));$('statusList').innerHTML=arr.map(s=>`<div class="card-item"><div class="card-content"><div class="card-text">${esc(s)}</div></div><div class="card-actions"><button class="edit-btn" onclick="editStatus(${statusCards.indexOf(s)})">修改</button><button class="delete-btn" onclick="deleteStatus(${statusCards.indexOf(s)})">删除</button></div></div>`).join('')||'<div style="padding:20px;text-align:center;color:#999">暂无状态</div>';$('statusStats').textContent=`当前共 ${statusCards.length} 条状态`}
+function editStatus(i){const v=prompt('修改状态内容：',statusCards[i]);if(v?.trim()){statusCards[i]=v.trim();save();renderStatusList()}}function deleteStatus(i){if(confirm('确定删除吗？')){statusCards.splice(i,1);save();renderStatusList()}}
+function addPatFromText(){const v=$('patBatchText').value.trim();if(!v)return alert('请输入拍一拍内容');v.split('\\n').map(x=>x.trim()).filter(Boolean).forEach(x=>{if(!patCards.includes(x))patCards.push(x)});$('patBatchText').value='';save();renderPatList()}
+function renderPatList(){const q=$('searchPat').value.toLowerCase();const arr=patCards.filter(x=>x.toLowerCase().includes(q));$('patList').innerHTML=arr.map(p=>`<div class="card-item"><div class="card-content"><div class="card-text">${esc(p)}</div></div><div class="card-actions"><button class="edit-btn" onclick="editPat(${patCards.indexOf(p)})">修改</button><button class="delete-btn" onclick="deletePat(${patCards.indexOf(p)})">删除</button></div></div>`).join('')||'<div style="padding:20px;text-align:center;color:#999">暂无拍一拍</div>';$('patStats').textContent=`当前共 ${patCards.length} 条拍一拍`}
+function editPat(i){const v=prompt('修改拍一拍内容：',patCards[i]);if(v?.trim()){patCards[i]=v.trim();save();renderPatList()}}function deletePat(i){if(confirm('确定删除吗？')){patCards.splice(i,1);save();renderPatList()}}
+function addCardsFromText(){const v=$('batchText').value.trim(),cat=$('newCategory').value.trim()||'未分类';if(!v)return alert('请输入字卡内容');v.split('\\n').map(x=>x.trim()).filter(Boolean).forEach(x=>{if(!cards.some(c=>c.text===x))cards.push({text:x,category:cat})});$('batchText').value='';$('newCategory').value='';save();renderCardList()}
+function renderCardList(){const q=$('searchCards').value.toLowerCase();let arr=cards;if(currentFilter!=='all')arr=arr.filter(c=>c.category===currentFilter);if(q)arr=arr.filter(c=>c.text.toLowerCase().includes(q));$('cardList').innerHTML=arr.map(c=>`<div class="card-item"><div class="card-content"><div class="card-text">${esc(c.text)}</div><span class="card-category">${esc(c.category)}</span></div><div class="card-actions"><button class="edit-btn" onclick="editCard(${cards.indexOf(c)})">修改</button><button class="delete-btn" onclick="deleteCard(${cards.indexOf(c)})">删除</button></div></div>`).join('')||'<div style="padding:20px;text-align:center;color:#999">暂无字卡</div>';$('cardStats').textContent=`当前共 ${cards.length} 张字卡`;renderCategoryFilter()}
+function renderCategoryFilter(){const cats=[...new Set(cards.map(c=>c.category))];$('categoryFilter').innerHTML='<div class="cat-tag '+(currentFilter==='all'?'active':'')+'" onclick="filterByCategory(\'all\')">全部</div>'+cats.map(c=>`<div class="cat-tag ${currentFilter===c?'active':''}" onclick="filterByCategory(${JSON.stringify(c)})">${esc(c)}</div>`).join('')}
+function filterByCategory(c){currentFilter=c;renderCardList()}function editCard(i){const c=cards[i],t=prompt('修改字卡：',c.text);if(t?.trim()){const cat=prompt('修改分类：',c.category)||c.category;cards[i]={text:t.trim(),category:cat.trim()||'未分类'};save();renderCardList()}}function deleteCard(i){if(confirm('确定删除这张字卡吗？')){cards.splice(i,1);save();renderCardList()}}
+function updateDataStats(){$('dataStats').textContent=`字卡：${cards.length} | 状态：${statusCards.length} | 拍一拍：${patCards.length} | 聊天记录：${chatHistory.length}`}
+function exportAllData(){const blob=new Blob([JSON.stringify({version:'3.0',exportTime:new Date().toISOString(),config,cards,statusCards,patCards,chatHistory},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='dream-chat-pink-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+function importAllData(input){if(!input.files?.[0])return;const r=new FileReader();r.onload=e=>{try{const d=JSON.parse(e.target.result);if(d.config)config={...config,...d.config};if(Array.isArray(d.cards))d.cards.forEach(c=>{const x=typeof c==='string'?{text:c,category:'未分类'}:c;if(x.text&&!cards.some(z=>z.text===x.text))cards.push(x)});if(Array.isArray(d.statusCards))d.statusCards.forEach(x=>{if(!statusCards.includes(x))statusCards.push(x)});if(Array.isArray(d.patCards))d.patCards.forEach(x=>{if(!patCards.includes(x))patCards.push(x)});if(Array.isArray(d.chatHistory))chatHistory=d.chatHistory;apply();renderCardList();renderStatusList();renderPatList();renderChatHistory();save();alert('导入完成')}catch(err){alert('JSON格式错误')}};r.readAsText(input.files[0]);input.value=''}
+function clearChatHistory(){if(confirm('确定清空聊天记录吗？')){chatHistory=[];renderChatHistory();save()}}
+function clearAll(){if(confirm('确定重置所有设置吗？')){localStorage.removeItem('dreamChatPinkConfig');location.reload()}}
+function showImgModal(src){$('modalImg').src=src;$('imgModal').classList.add('show');$('overlay').classList.add('show')}function closeImgModal(){$('imgModal').classList.remove('show');$('overlay').classList.remove('show')}
+function showToast(t){$('toast').textContent=t;$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),1800)}
+
+let wakeLock=null;
+async function requestWakeLock(){if(!config.backgroundKeepAlive||!('wakeLock' in navigator))return;try{wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>{wakeLock=null})}catch(e){wakeLock=null}}
+async function releaseWakeLock(){if(wakeLock){try{await wakeLock.release()}catch(e){}wakeLock=null}}
+function updateKeepAliveBadge(){$('keepaliveBadge').textContent=config.backgroundKeepAlive?'已开启':'未开启'}
+function applyKeepAlive(){updateKeepAliveBadge();if(config.backgroundKeepAlive){requestWakeLock();try{navigator.storage?.persist?.()}catch(e){}}else{releaseWakeLock()}}
+function handleVisibilityChange(){if(document.visibilityState==='visible'){applyKeepAlive();restorePendingTasks();scheduleProactive()}else{hideTyping();save()}}
+document.addEventListener('visibilitychange',handleVisibilityChange);
+window.addEventListener('pagehide',()=>save());
+window.addEventListener('pageshow',()=>{restorePendingTasks();scheduleProactive();});
+setInterval(()=>{if(document.visibilityState==='visible'){restorePendingTasks();scheduleProactive();}},30000);
+function startVideoCall(caller){$('videoTitle').textContent=caller==='user'?`拨打给 ${config.dreamName}...`:`${config.dreamName} 邀请你视频通话`;$('videoStatus').textContent='等待接听...';$('videoAvatar').innerHTML=config.dreamAvatar?`<img src="${config.dreamAvatar}">`:(config.dreamName||'梦').charAt(0);$('videoActions').innerHTML='<button class="video-action-btn accept-btn" onclick="acceptCall()">接听</button><button class="video-action-btn reject-btn" onclick="rejectCall()">拒绝</button>';$('videoCallWindow').classList.add('show')}
+function acceptCall(){isCallActive=true;callStartTime=Date.now();$('videoTitle').textContent='视频通话中';$('videoStatus').textContent='通话中...';$('videoActions').innerHTML='<button class="video-action-btn end-btn" onclick="endCall()">结束通话</button>';$('callDuration').style.display='block';callTimer=setInterval(()=>{const s=Math.floor((Date.now()-callStartTime)/1000);$('callDuration').textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`},1000)}
+function rejectCall(){closeVideoCall();addMessage('拒绝了视频通话','user',false)}function endCall(){const s=Math.floor((Date.now()-callStartTime)/1000);closeVideoCall();addMessage(`视频通话时长 ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`,'dream',false)}
+function closeVideoCall(){clearInterval(callTimer);callTimer=null;isCallActive=false;$('videoCallWindow').classList.remove('show');$('callDuration').style.display='none'}function toggleVideoMinimize(){}
+window.onload=()=>{load();if(!chatHistory.length){addTimestamp();setTimeout(()=>addMessage('今天过得怎么样？','dream'),800)}}
+// ===== Web Push =====
+function normalizeServerUrl(){return (config.pushServerUrl||'').trim().replace(/\/$/,'')}
+function updatePushBadge(){$('pushBadge').textContent=config.pushEnabled?'已开启':'未连接'}
+function savePushServerUrl(){config.pushServerUrl=$('pushServerUrl').value.trim().replace(/\/$/,'');save();updatePushBadge();showToast(config.pushServerUrl?'服务器地址已保存':'已清空服务器地址')}
+async function togglePush(){
+ config.pushEnabled=$('pushEnabled').checked;save();updatePushBadge();
+ if(config.pushEnabled){await subscribePush()} else {await unsubscribePush(false)}
+}
+async function subscribePush(){
+ const base=normalizeServerUrl();
+ if(!base){$('pushEnabled').checked=false;config.pushEnabled=false;save();showToast('请先填写推送服务器地址');return}
+ if(!('serviceWorker' in navigator)||!('PushManager' in window)){showToast('当前浏览器不支持 Web Push');return}
+ if(!('Notification' in window)){showToast('当前浏览器不支持通知');return}
+ try{
+  const permission=Notification.permission==='granted'?'granted':await Notification.requestPermission();
+  if(permission!=='granted'){showToast('请允许通知权限');return}
+  const reg=await navigator.serviceWorker.ready;
+  const keyRes=await fetch(base+'/vapid-public-key');
+  if(!keyRes.ok)throw new Error('vapid key request failed');
+  const {publicKey}=await keyRes.json();
+  const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey: urlBase64ToUint8Array(publicKey)});
+  const res=await fetch(base+'/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({subscription:sub.toJSON(),clientId:getClientId()})});
+  if(!res.ok)throw new Error('subscribe failed');
+  config.pushEnabled=true;save();updatePushBadge();showToast('后台推送已连接');
+ }catch(e){config.pushEnabled=false;$('pushEnabled').checked=false;save();updatePushBadge();showToast('连接失败：请检查服务器地址')}
+}
+async function unsubscribePush(show=true){
+ try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(sub){const base=normalizeServerUrl();if(base){fetch(base+'/unsubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint:sub.endpoint})}).catch(()=>{});}await sub.unsubscribe();}}catch(e){}
+ config.pushEnabled=false;save();updatePushBadge();if(show)showToast('后台推送已断开')
+}
+async function testPush(){
+ const base=normalizeServerUrl();if(!base){showToast('请先填写推送服务器地址');return}
+ try{const res=await fetch(base+'/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clientId:getClientId()})});if(!res.ok)throw new Error();showToast('已请求发送测试推送');}catch(e){showToast('测试失败：请确认已连接后台推送')}
+}
+function getClientId(){let id=localStorage.getItem('dreamChatClientId');if(!id){id=crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random();localStorage.setItem('dreamChatClientId',id)}return id}
+function urlBase64ToUint8Array(base64String){const padding='='.repeat((4-base64String.length%4)%4);const base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');const raw=atob(base64);return Uint8Array.from([...raw].map(c=>c.charCodeAt(0)))}
+// ===== PWA / Service Worker =====
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+});
+async function installPWA(){
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    try{ await deferredInstallPrompt.userChoice; }catch(e){}
+    deferredInstallPrompt = null;
+    return;
+  }
+  showToast('如果浏览器没有弹窗，请使用“添加到主屏幕”功能');
+}
+async function requestNotificationPermission(){
+  if(!('Notification' in window)){ showToast('当前浏览器不支持通知'); return; }
+  try{
+    const permission = await Notification.requestPermission();
+    showToast(permission==='granted'?'通知已开启':'通知权限未开启');
+  }catch(e){ showToast('无法请求通知权限'); }
+}
+async function testNotification(){
+  if(!('Notification' in window)){ showToast('当前浏览器不支持通知'); return; }
+  if(Notification.permission!=='granted'){
+    const p=await Notification.requestPermission();
+    if(p!=='granted'){showToast('请先允许通知');return;}
+  }
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    await reg.showNotification('梦角聊天室',{
+      body:'这是后台通知测试。真正的锁屏主动消息需要连接 Web Push 后台服务。',
+      icon:'./icons/icon-192.png',
+      badge:'./icons/icon-192.png',
+      tag:'dream-chat-test'
+    });
+  }catch(e){
+    try{ new Notification('梦角聊天室',{body:'通知测试成功'}); }catch(err){ showToast('通知测试失败'); }
+  }
+}
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js',{scope:'./'}).then(reg=>{
+      reg.update().catch(()=>{});
+    }).catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
